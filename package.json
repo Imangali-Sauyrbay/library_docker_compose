@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\"",
+    "lint:branch": "branch-name-lint",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@b12k/branch-name-lint": "^1.0.3",
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
+    "husky": "^8.0.0"
+  }
+}

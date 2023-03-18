@@ -1,5 +1,16 @@
 version: '3'
 services:
+  proxy:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./volumes/ngxproxy/data:/data
+      - ./volumes/letsencrypt:/etc/letsencrypt
+
   db:
     image: postgres:alpine
     restart: unless-stopped
@@ -10,6 +21,8 @@ services:
     volumes:
       - ./volumes/postgres/data:/var/lib/postgresql/data
       - ./volumes/postgres/initial_sql/initial_db.sql:/docker-entrypoint-initdb.d/create_schemas.sql
+    depends_on:
+      - proxy
     networks:
       -  postgre-network
 
@@ -25,7 +38,8 @@ services:
     ports:
       - "8000:80"
     depends_on:
-      - db
+      - proxy
+      - app
     networks:
       -  postgre-network
       -  api-network
@@ -40,6 +54,7 @@ services:
       - "8080:80"
     depends_on:
       - api
+      - proxy
     networks:
       -  api-network
 
