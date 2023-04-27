@@ -16,12 +16,13 @@ services:
   api:
     build:
       context: ./backend
-      dockerfile: ./docker/swoole/Dockerfile
+      dockerfile: ./docker/Dockerfile
     container_name: backend_lib
+    user: ${UID}:${GID}
     restart: unless-stopped
     volumes:
       -  ./backend:/var/www
-      -  ./backend/docker/swoole/extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
+      -  ./backend/docker/extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
     ports:
       - "8000:80"
     depends_on:
