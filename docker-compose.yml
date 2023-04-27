@@ -1,48 +1,113 @@
 version: '3'
 services:
-  db:
+  proxy:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: always
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./volumes/ngxproxy/data:/data
+      - ./volumes/letsencrypt:/etc/letsencrypt
+    networks:
+      - web-network
+      - api-network
+
+  pgsql:
     image: postgres:alpine
-    restart: unless-stopped
+    restart: always
     container_name: postgre_lib
     ports:
       - '5432:5432'
-    env_file: ./backend/.env
+    environment:
+      - POSTGRES_DB=library
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
     volumes:
       - ./volumes/postgres/data:/var/lib/postgresql/data
       - ./volumes/postgres/initial_sql/initial_db.sql:/docker-entrypoint-initdb.d/create_schemas.sql
     networks:
       -  postgre-network
 
-  api:
-    build:
-      context: ./backend
-      dockerfile: ./docker/swoole/Dockerfile
-    container_name: backend_lib
-    restart: unless-stopped
+  redis:
+    image: redis:alpine3.17
+    restart: always
+    container_name: redis_lib
+    command: redis-server --save 30 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t
+    ports:
+      - '6379:6379'
     volumes:
-      -  ./backend:/var/www
-      -  ./backend/docker/swoole/extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
+      - './volumes/redis/data:/data'
+    networks:
+      - redis-network
+
+  meili:
+    image: getmeili/meilisearch:v1.1.1
+    restart: always
+    container_name: meili_lib
+    command: meilisearch --master-key=eYVX7EwVmmxKPCDmwMtyKVge8oLd2t
+    environment:
+      - http_proxy
+    ports:
+      - '7700:7700'
+    volumes:
+      - ./volumes/meili/data:/meili_data
+    networks:
+      - meili-network
+
+  api:
+    image: simanuelle/libapp_backend
+    container_name: backend_lib
+    user: ${UID}:${GID}
+    restart: always
+    volumes:
+      -  ./backend/docker/extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
+      -  ./extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
     ports:
       - "8000:80"
+    env_file: .env
+    labels:
+      - "com.centurylinklabs.watchtower.enable"
     depends_on:
-      - db
+      - proxy
+      - pgsql
+      - redis
+      - meili
     networks:
-      -  postgre-network
-      -  api-network
+      - redis-network
+      - postgre-network
+      - meili-network
+      - api-network
 
   web:
-    build:
-      context: ./frontend
-      dockerfile: ./Dockerfile
+    image: simanuelle/libapp_frontend
     container_name: frontend_lib
-    restart: unless-stopped
+    restart: always
+    labels:
+      - "com.centurylinklabs.watchtower.enable"
     ports:
       - "8080:80"
     depends_on:
       - api
+      - proxy
     networks:
-      -  api-network
+      -  web-network
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    environment:
+      WATCHTOWER_POLL_INTERVAL: 30
+      WATCHTOWER_LABEL_ENABLE: true
 
 networks:
   postgre-network:
+  redis-network:
   api-network:
+  web-network:
+  meili-network:
+    driver: bridge
