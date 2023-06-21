@@ -62,13 +62,13 @@ services:
     user: ${UID}:${GID}
     restart: always
     volumes:
-      -  ./backend/docker/extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
+      -  ./volumes/storage:/var/www/storage
       -  ./extend-php.ini:/usr/local/etc/php/conf.d/extend-php.ini
     ports:
       - "8000:80"
     env_file: .env
     labels:
-      - "com.centurylinklabs.watchtower.enable"
+      - com.centurylinklabs.watchtower.enable
     depends_on:
       - proxy
       - pgsql
@@ -85,7 +85,7 @@ services:
     container_name: frontend_lib
     restart: always
     labels:
-      - "com.centurylinklabs.watchtower.enable"
+      - com.centurylinklabs.watchtower.enable
     ports:
       - "8080:80"
     depends_on:
